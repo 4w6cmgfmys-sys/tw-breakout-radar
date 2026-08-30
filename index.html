@@ -1,40 +1,197 @@
 <!doctype html>
 <html lang="zh-Hant">
+
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>台股突破雷達</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#0b0f14;color:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif}
-.wrap{max-width:680px;margin:auto;padding:14px}
-.card{background:#121820;border:1px solid #28323d;border-radius:16px;padding:15px;margin-bottom:12px}
-.head{display:flex;justify-content:space-between;margin-bottom:14px;font-weight:900}
-.brand b{color:#62e0aa}
-.sub,.rule,.meta,.reason,.note{color:#87929d;font-size:11px;line-height:1.5}
-h1{font-size:21px;margin:0 0 5px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
-.label{font-size:11px;color:#9aa6b0}
-.input{width:100%;margin-top:6px;padding:12px;border-radius:10px;border:1px solid #34404c;background:#0b1016;color:#fff;font-size:16px;font-weight:700}
-.check{display:block;margin-top:12px;font-size:12px}
-.scan{width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px;background:#62e0aa;font-weight:900}
-.tabs{display:flex;gap:6px;margin-bottom:10px}
-.tab{flex:1;padding:10px 3px;border-radius:9px;border:1px solid #2b3742;background:#151d25;color:#aab5be}
-.active{color:#62e0aa!important;border-color:#62e0aa!important}
-.empty{padding:14px;background:#0e141b;border-radius:10px;color:#87929d;font-size:12px}
-.stock{padding:13px 2px;border-bottom:1px solid #252e37}
-.top{display:flex;justify-content:space-between}
-.name{font-weight:850}
-.code{color:#9eabb6;margin-right:6px}
-.score{font-size:18px;font-weight:900;color:#62e0aa}
-.meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:7px}
-.near{color:#fff;font-weight:800}
-.reason{margin-top:6px}
-.note{margin-top:10px;color:#65717d}
+
+body{
+margin:0;
+background:#0b0f14;
+color:#f4f7fa;
+font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif
+}
+
+.wrap{
+max-width:680px;
+margin:auto;
+padding:14px
+}
+
+.card{
+background:#121820;
+border:1px solid #28323d;
+border-radius:16px;
+padding:15px;
+margin-bottom:12px
+}
+
+.head{
+display:flex;
+justify-content:space-between;
+margin-bottom:14px;
+font-weight:900
+}
+
+.brand b{
+color:#62e0aa
+}
+
+.sub,.rule,.meta,.reason,.note{
+color:#87929d;
+font-size:11px;
+line-height:1.5
+}
+
+h1{
+font-size:21px;
+margin:0 0 5px
+}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:9px;
+margin-top:13px
+}
+
+.label{
+font-size:11px;
+color:#9aa6b0
+}
+
+.input{
+width:100%;
+margin-top:6px;
+padding:12px;
+border-radius:10px;
+border:1px solid #34404c;
+background:#0b1016;
+color:#fff;
+font-size:16px;
+font-weight:700
+}
+
+.check{
+display:block;
+margin-top:12px;
+font-size:12px
+}
+
+.scan{
+width:100%;
+margin-top:12px;
+padding:12px;
+border:0;
+border-radius:10px;
+background:#62e0aa;
+font-weight:900
+}
+
+.scan:disabled{
+opacity:.5
+}
+
+.tabs{
+display:flex;
+gap:6px;
+margin-bottom:10px
+}
+
+.tab{
+flex:1;
+padding:10px 3px;
+border-radius:9px;
+border:1px solid #2b3742;
+background:#151d25;
+color:#aab5be
+}
+
+.active{
+color:#62e0aa!important;
+border-color:#62e0aa!important
+}
+
+.empty{
+padding:14px;
+background:#0e141b;
+border-radius:10px;
+color:#87929d;
+font-size:12px
+}
+
+.stock{
+padding:13px 2px;
+border-bottom:1px solid #252e37
+}
+
+.top{
+display:flex;
+justify-content:space-between
+}
+
+.name{
+font-weight:850
+}
+
+.code{
+color:#9eabb6;
+margin-right:6px
+}
+
+.score{
+font-size:18px;
+font-weight:900;
+color:#62e0aa
+}
+
+.meta{
+display:flex;
+flex-wrap:wrap;
+gap:6px 12px;
+margin-top:7px
+}
+
+.near{
+color:#fff;
+font-weight:800
+}
+
+.reason{
+margin-top:6px
+}
+
+.note{
+margin-top:10px;
+color:#65717d
+}
+
+.status{
+margin-top:10px;
+padding:10px;
+border-radius:10px;
+background:#0e141b;
+font-size:12px;
+color:#87929d
+}
+
+.error{
+color:#ff8f8f
+}
+
+.loading{
+color:#62e0aa
+}
 </style>
+
 </head>
 
 <body>
+
 <main class="wrap">
 
 <div class="head">
@@ -43,6 +200,7 @@ h1{font-size:21px;margin:0 0 5px}
 </div>
 
 <section class="card">
+
 <h1>台股突破雷達</h1>
 
 <div class="sub">
@@ -53,12 +211,25 @@ h1{font-size:21px;margin:0 0 5px}
 
 <label class="label">
 回溯高點（交易日）
-<input class="input" id="days" type="number" value="20" min="2">
+<input
+class="input"
+id="days"
+type="number"
+value="20"
+min="2"
+max="120">
 </label>
 
 <label class="label">
 距離高點（%）
-<input class="input" id="pct" type="number" value="10" step=".1" min=".1">
+<input
+class="input"
+id="pct"
+type="number"
+value="10"
+step=".1"
+min=".1"
+max="100">
 </label>
 
 </div>
@@ -74,15 +245,32 @@ h1{font-size:21px;margin:0 0 5px}
 🔍 開始掃描
 </button>
 
+<div id="status" class="status">
+準備完成，可以開始掃描。
+</div>
+
 </section>
 
 <section class="card">
 
 <div class="tabs">
-<button class="tab active" data-t="all">全部</button>
-<button class="tab" data-t="a">🟢 A級</button>
-<button class="tab" data-t="b">🟡 B級</button>
-<button class="tab" data-t="c">🔴 C級</button>
+
+<button class="tab active" data-t="all">
+全部
+</button>
+
+<button class="tab" data-t="a">
+🟢 A級
+</button>
+
+<button class="tab" data-t="b">
+🟡 B級
+</button>
+
+<button class="tab" data-t="c">
+🔴 C級
+</button>
+
 </div>
 
 <div id="summary" class="empty">
@@ -92,97 +280,232 @@ h1{font-size:21px;margin:0 0 5px}
 <div id="results"></div>
 
 <div class="note">
-目前這是手機版介面與篩選邏輯展示。下一階段會把示範資料替換成真正的 TWSE／TPEx 台股行情。
+資料來源：TWSE／TPEx。掃描結果依目前取得的市場資料計算，僅供研究參考，不構成投資建議。
 </div>
 
 </section>
+
 </main>
 
 <script>
 
-const $=x=>document.getElementById(x);
+const $ = x => document.getElementById(x);
 
-let tab="all";
+let tab = "all";
 
-const data=[
-["2330","台積電",1068,1085,1.42,94,"a","距離前高很近，趨勢與量能條件較佳"],
-["2382","廣達",298,301,1.28,91,"a","價格持續靠近前高，量能溫和增加"],
-["3037","欣興",178.5,184,1.05,82,"b","符合距離條件，但量能確認度普通"],
-["3711","日月光投控",207,214,.91,67,"c","距離前高近，但量能偏弱，突破品質需觀察"]
-];
+let data = [];
+
 
 function rule(){
-let d=+$("days").value;
-let p=+$("pct").value;
-$("rule").textContent=
+
+let d = +$("days").value;
+
+let p = +$("pct").value;
+
+$("rule").textContent =
 `前 ${d} 個交易日高點；距離 ≤ ${p}%；高點不含今天。`;
+
 }
+
 
 function render(){
 
-let d=+$("days").value;
-let p=+$("pct").value;
+let d = +$("days").value;
 
-let r=data
-.map(x=>({...x,dist:+((x[3]-x[2])/x[2]*100).toFixed(2)}))
-.filter(x=>x.dist<=p)
-.filter(x=>!$("exclude").checked||x[2]<x[3])
-.filter(x=>tab=="all"||x[6]==tab);
+let p = +$("pct").value;
 
-$("summary").textContent=
-`條件 ${d} 日 / ${p}%｜共 ${r.length} 檔（示範）`;
+let r = data
+.filter(x => tab === "all" || x.grade === tab)
+.filter(x => !$("exclude").checked || x.price < x.high);
 
-$("results").innerHTML=r.map(x=>`
+
+$("summary").textContent =
+`條件 ${d} 日 / ${p}%｜共 ${r.length} 檔`;
+
+
+$("results").innerHTML = r.map(x => `
 
 <div class="stock">
 
 <div class="top">
 
 <div class="name">
-<span class="code">${x[0]}</span>${x[1]}
+<span class="code">${x.code}</span>${x.name}
 </div>
 
-<div class="score">${x[5]}</div>
+<div class="score">
+${x.score}
+</div>
 
 </div>
+
 
 <div class="meta">
 
-<span>現價 ${x[2]}</span>
+<span>
+${x.market}
+</span>
 
-<span>${d}日高 ${x[3]}</span>
+<span>
+現價 ${x.price}
+</span>
 
-<span class="near">還需 +${x.dist}%</span>
+<span>
+${d}日高 ${x.high}
+</span>
 
-<span>量比 ${x[4]}×</span>
+<span class="near">
+還需 +${x.dist}%
+</span>
 
 </div>
 
-<div class="reason">${x[7]}</div>
+
+<div class="reason">
+
+突破分數 ${x.score}｜${x.grade.toUpperCase()}級
+
+</div>
+
+<div class="reason">
+
+距離前高 ${x.dist}%
+
+</div>
 
 </div>
 
 `).join("")
-||
-'<div class="empty">沒有符合條件的股票。</div>';
+
+
+|| '<div class="empty">沒有符合條件的股票。</div>';
+
 }
 
-$("days").oninput=rule;
-$("pct").oninput=rule;
-$("scan").onclick=render;
 
-document.querySelectorAll(".tab").forEach(b=>
-b.onclick=()=>{
-document.querySelectorAll(".tab")
-.forEach(x=>x.classList.remove("active"));
+async function scan(){
+
+let d = +$("days").value;
+
+let p = +$("pct").value;
+
+$("scan").disabled = true;
+
+$("status").className = "status loading";
+
+$("status").textContent =
+"正在取得 TWSE／TPEx 台股資料，請稍候…";
+
+$("summary").textContent =
+"正在掃描…";
+
+$("results").innerHTML = "";
+
+
+try{
+
+const response =
+await fetch(`/api/scan?days=${d}&pct=${p}`);
+
+const result =
+await response.json();
+
+
+if(!response.ok){
+
+throw new Error(
+result.error || "掃描失敗"
+);
+
+}
+
+
+if(result.error){
+
+throw new Error(result.error);
+
+}
+
+
+data = result.results || [];
+
+
+$("summary").textContent =
+`資料日期 ${result.date}｜條件 ${result.days} 日 / ${result.pct}%｜共 ${data.length} 檔`;
+
+
+$("status").className = "status";
+
+$("status").textContent =
+`掃描完成：${data.length} 檔符合條件。`;
+
+
+render();
+
+}
+
+catch(error){
+
+data = [];
+
+$("summary").textContent =
+"掃描失敗。";
+
+$("results").innerHTML =
+`<div class="empty error">
+${error.message}
+</div>`;
+
+$("status").className =
+"status error";
+
+$("status").textContent =
+"無法取得市場資料，請稍後再試。";
+
+}
+
+finally{
+
+$("scan").disabled = false;
+
+}
+
+}
+
+
+$("days").oninput = rule;
+
+$("pct").oninput = rule;
+
+$("scan").onclick = scan;
+
+
+document
+.querySelectorAll(".tab")
+.forEach(b => {
+
+b.onclick = () => {
+
+document
+.querySelectorAll(".tab")
+.forEach(x =>
+x.classList.remove("active")
+);
 
 b.classList.add("active");
-tab=b.dataset.t;
+
+tab = b.dataset.t;
+
 render();
+
+};
+
 });
+
 
 rule();
 
 </script>
+
 </body>
 </html>
