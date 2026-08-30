@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>台股突破雷達</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b0f14;color:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif}
+.wrap{max-width:680px;margin:auto;padding:14px}
+.card{background:#121820;border:1px solid #28323d;border-radius:16px;padding:15px;margin-bottom:12px}
+.head{display:flex;justify-content:space-between;margin-bottom:14px;font-weight:900}
+.brand b{color:#62e0aa}
+.sub,.rule,.meta,.reason,.note{color:#87929d;font-size:11px;line-height:1.5}
+h1{font-size:21px;margin:0 0 5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
+.label{font-size:11px;color:#9aa6b0}
+.input{width:100%;margin-top:6px;padding:12px;border-radius:10px;border:1px solid #34404c;background:#0b1016;color:#fff;font-size:16px;font-weight:700}
+.check{display:block;margin-top:12px;font-size:12px}
+.scan{width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px;background:#62e0aa;font-weight:900}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{flex:1;padding:10px 3px;border-radius:9px;border:1px solid #2b3742;background:#151d25;color:#aab5be}
+.active{color:#62e0aa!important;border-color:#62e0aa!important}
+.empty{padding:14px;background:#0e141b;border-radius:10px;color:#87929d;font-size:12px}
+.stock{padding:13px 2px;border-bottom:1px solid #252e37}
+.top{display:flex;justify-content:space-between}
+.name{font-weight:850}
+.code{color:#9eabb6;margin-right:6px}
+.score{font-size:18px;font-weight:900;color:#62e0aa}
+.meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:7px}
+.near{color:#fff;font-weight:800}
+.reason{margin-top:6px}
+.note{margin-top:10px;color:#65717d}
+</style>
+</head>
+
+<body>
+<main class="wrap">
+
+<div class="head">
+<div class="brand">TW <b>BREAKOUT</b> RADAR</div>
+<div>🎯</div>
+</div>
+
+<section class="card">
+<h1>台股突破雷達</h1>
+
+<div class="sub">
+找出尚未創高、但距離 X 日高點很近的股票。
+</div>
+
+<div class="grid">
+
+<label class="label">
+回溯高點（交易日）
+<input class="input" id="days" type="number" value="20" min="2">
+</label>
+
+<label class="label">
+距離高點（%）
+<input class="input" id="pct" type="number" value="10" step=".1" min=".1">
+</label>
+
+</div>
+
+<label class="check">
+<input id="exclude" type="checkbox" checked>
+排除已創 X 日新高
+</label>
+
+<div class="rule" id="rule"></div>
+
+<button class="scan" id="scan">
+🔍 開始掃描
+</button>
+
+</section>
+
+<section class="card">
+
+<div class="tabs">
+<button class="tab active" data-t="all">全部</button>
+<button class="tab" data-t="a">🟢 A級</button>
+<button class="tab" data-t="b">🟡 B級</button>
+<button class="tab" data-t="c">🔴 C級</button>
+</div>
+
+<div id="summary" class="empty">
+尚未掃描。
+</div>
+
+<div id="results"></div>
+
+<div class="note">
+目前這是手機版介面與篩選邏輯展示。下一階段會把示範資料替換成真正的 TWSE／TPEx 台股行情。
+</div>
+
+</section>
+</main>
+
+<script>
+
+const $=x=>document.getElementById(x);
+
+let tab="all";
+
+const data=[
+["2330","台積電",1068,1085,1.42,94,"a","距離前高很近，趨勢與量能條件較佳"],
+["2382","廣達",298,301,1.28,91,"a","價格持續靠近前高，量能溫和增加"],
+["3037","欣興",178.5,184,1.05,82,"b","符合距離條件，但量能確認度普通"],
+["3711","日月光投控",207,214,.91,67,"c","距離前高近，但量能偏弱，突破品質需觀察"]
+];
+
+function rule(){
+let d=+$("days").value;
+let p=+$("pct").value;
+$("rule").textContent=
+`前 ${d} 個交易日高點；距離 ≤ ${p}%；高點不含今天。`;
+}
+
+function render(){
+
+let d=+$("days").value;
+let p=+$("pct").value;
+
+let r=data
+.map(x=>({...x,dist:+((x[3]-x[2])/x[2]*100).toFixed(2)}))
+.filter(x=>x.dist<=p)
+.filter(x=>!$("exclude").checked||x[2]<x[3])
+.filter(x=>tab=="all"||x[6]==tab);
+
+$("summary").textContent=
+`條件 ${d} 日 / ${p}%｜共 ${r.length} 檔（示範）`;
+
+$("results").innerHTML=r.map(x=>`
+
+<div class="stock">
+
+<div class="top">
+
+<div class="name">
+<span class="code">${x[0]}</span>${x[1]}
+</div>
+
+<div class="score">${x[5]}</div>
+
+</div>
+
+<div class="meta">
+
+<span>現價 ${x[2]}</span>
+
+<span>${d}日高 ${x[3]}</span>
+
+<span class="near">還需 +${x.dist}%</span>
+
+<span>量比 ${x[4]}×</span>
+
+</div>
+
+<div class="reason">${x[7]}</div>
+
+</div>
+
+`).join("")
+||
+'<div class="empty">沒有符合條件的股票。</div>';
+}
+
+$("days").oninput=rule;
+$("pct").oninput=rule;
+$("scan").onclick=render;
+
+document.querySelectorAll(".tab").forEach(b=>
+b.onclick=()=>{
+document.querySelectorAll(".tab")
+.forEach(x=>x.classList.remove("active"));
+
+b.classList.add("active");
+tab=b.dataset.t;
+render();
+});
+
+rule();
+
+</script>
+</body>
+</html>
