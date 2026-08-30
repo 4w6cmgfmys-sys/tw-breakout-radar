@@ -357,7 +357,22 @@ def scan():
 
     })
 
-
+@app.route("/")
+def home():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TW Breakout Radar</title>
+    </head>
+    <body>
+        <h1>🇹🇼 TW Breakout Radar</h1>
+        <p>台股突破雷達正在運作中 🚀</p>
+    </body>
+    </html>
+    """
 if __name__ == "__main__":
 
     port = int(
