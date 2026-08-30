@@ -1,12 +1,12 @@
 import os
 import requests
 from datetime import date, timedelta
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 
 app = Flask(__name__)
 
 HEADERS = {
-    "User-Agent": "TW-Breakout-Radar/1.0"
+    "User-Agent": "Mozilla/5.0"
 }
 
 
@@ -16,107 +16,16 @@ def num(value):
 
     value = str(value).strip().replace(",", "")
 
-    if value in ("", "--", "---", "－", "—"):
+    if value in ("", "--", "---", "－", "—", "None"):
         return None
 
     try:
         return float(value)
-    except:
+    except (ValueError, TypeError):
         return None
 
 
-def walk(obj):
-    if isinstance(obj, dict):
-        yield obj
-        for value in obj.values():
-            yield from walk(value)
-
-    elif isinstance(obj, list):
-        for value in obj:
-            yield from walk(value)
-
-
-def extract(payload, code_names, close_names, high_names):
-
-    result = []
-
-    for table in walk(payload):
-
-        if not isinstance(table, dict):
-            continue
-
-        fields = table.get("fields")
-        data = table.get("data")
-
-        if not isinstance(fields, list):
-            continue
-
-        if not isinstance(data, list):
-            continue
-
-        fields = [str(x).strip() for x in fields]
-
-        for row in data:
-
-            if not isinstance(row, list):
-                continue
-
-            if len(row) != len(fields):
-                continue
-
-            item = dict(zip(fields, row))
-
-            code = None
-            close = None
-            high = None
-            name = ""
-
-            for key in code_names:
-                if key in item:
-                    code = item[key]
-                    break
-
-            for key in close_names:
-                if key in item:
-                    close = item[key]
-                    break
-
-            for key in high_names:
-                if key in item:
-                    high = item[key]
-                    break
-
-            for key in ["證券名稱", "Name"]:
-                if key in item:
-                    name = item[key]
-                    break
-
-            if code is None:
-                continue
-
-            close = num(close)
-            high = num(high)
-
-            if close is None or high is None:
-                continue
-
-            code = str(code).strip()
-
-            if not code.isdigit():
-                continue
-
-            result.append({
-                "code": code,
-                "name": str(name).strip(),
-                "close": close,
-                "high": high
-            })
-
-    return result
-
-
-def twse(date_string):
-
+def get_twse(date_string):
     url = "https://www.twse.com.tw/exchangeReport/MI_INDEX"
 
     params = {
@@ -125,36 +34,82 @@ def twse(date_string):
         "type": "ALLBUT0999"
     }
 
-    r = requests.get(
-        url,
-        params=params,
-        headers=HEADERS,
-        timeout=30
-    )
+    try:
+        response = requests.get(
+            url,
+            params=params,
+            headers=HEADERS,
+            timeout=30
+        )
 
-    r.raise_for_status()
+        response.raise_for_status()
+        payload = response.json()
 
-    payload = r.json()
+        result = {}
 
-    rows = extract(
-        payload,
-        ["證券代號"],
-        ["收盤價"],
-        ["最高價"]
-    )
+        for table in payload.get("tables", []):
+            fields = table.get("fields", [])
+            rows = table.get("data", [])
 
-    return {
-        x["code"]: {
-            **x,
-            "market": "TWSE"
-        }
-        for x in rows
-    }
+            if not fields or not rows:
+                continue
+
+            field_map = {
+                str(field).strip(): index
+                for index, field in enumerate(fields)
+            }
+
+            code_index = field_map.get("證券代號")
+            name_index = field_map.get("證券名稱")
+            high_index = field_map.get("最高價")
+            close_index = field_map.get("收盤價")
+
+            if None in (
+                code_index,
+                name_index,
+                high_index,
+                close_index
+            ):
+                continue
+
+            for row in rows:
+                if len(row) <= max(
+                    code_index,
+                    name_index,
+                    high_index,
+                    close_index
+                ):
+                    continue
+
+                code = str(row[code_index]).strip()
+
+                if not code.isdigit():
+                    continue
+
+                close = num(row[close_index])
+                high = num(row[high_index])
+
+                if close is None or high is None:
+                    continue
+
+                result[code] = {
+                    "code": code,
+                    "name": str(row[name_index]).strip(),
+                    "close": close,
+                    "high": high,
+                    "market": "上市"
+                }
+
+        return result
+
+    except Exception:
+        return {}
 
 
-def tpex(date_string):
+def get_tpex(date_string):
+    url = "https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes"
 
-    d = (
+    formatted_date = (
         date_string[:4]
         + "/"
         + date_string[4:6]
@@ -162,221 +117,311 @@ def tpex(date_string):
         + date_string[6:]
     )
 
-    url = "https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes"
-
     params = {
         "response": "json",
-        "date": d
+        "date": formatted_date
     }
-
-    r = requests.get(
-        url,
-        params=params,
-        headers=HEADERS,
-        timeout=30
-    )
-
-    r.raise_for_status()
-
-    payload = r.json()
-
-    rows = extract(
-        payload,
-        ["證券代號", "SecuritiesCompanyCode", "Code"],
-        ["收盤價", "Close", "ClosingPrice"],
-        ["最高價", "最高價", "High", "HighestPrice"]
-    )
-
-    return {
-        x["code"]: {
-            **x,
-            "market": "TPEx"
-        }
-        for x in rows
-    }
-
-
-def get_day(d):
-
-    twse_data = {}
-    tpex_data = {}
 
     try:
-        twse_data = twse(d)
-    except:
-        pass
+        response = requests.get(
+            url,
+            params=params,
+            headers=HEADERS,
+            timeout=30
+        )
 
-    try:
-        tpex_data = tpex(d)
-    except:
-        pass
+        response.raise_for_status()
+        payload = response.json()
 
-    return {
-        **twse_data,
-        **tpex_data
-    }
+        result = {}
+
+        for table in payload.get("tables", []):
+            fields = table.get("fields", [])
+            rows = table.get("data", [])
+
+            if not fields or not rows:
+                continue
+
+            field_map = {
+                str(field).strip(): index
+                for index, field in enumerate(fields)
+            }
+
+            code_index = None
+            name_index = None
+            high_index = None
+            close_index = None
+
+            for key in (
+                "證券代號",
+                "SecuritiesCompanyCode",
+                "Code"
+            ):
+                if key in field_map:
+                    code_index = field_map[key]
+                    break
+
+            for key in (
+                "證券名稱",
+                "Name"
+            ):
+                if key in field_map:
+                    name_index = field_map[key]
+                    break
+
+            for key in (
+                "最高價",
+                "High",
+                "HighestPrice"
+            ):
+                if key in field_map:
+                    high_index = field_map[key]
+                    break
+
+            for key in (
+                "收盤價",
+                "Close",
+                "ClosingPrice"
+            ):
+                if key in field_map:
+                    close_index = field_map[key]
+                    break
+
+            if None in (
+                code_index,
+                name_index,
+                high_index,
+                close_index
+            ):
+                continue
+
+            for row in rows:
+                if len(row) <= max(
+                    code_index,
+                    name_index,
+                    high_index,
+                    close_index
+                ):
+                    continue
+
+                code = str(row[code_index]).strip()
+
+                if not code.isdigit():
+                    continue
+
+                close = num(row[close_index])
+                high = num(row[high_index])
+
+                if close is None or high is None:
+                    continue
+
+                result[code] = {
+                    "code": code,
+                    "name": str(row[name_index]).strip(),
+                    "close": close,
+                    "high": high,
+                    "market": "上櫃"
+                }
+
+        return result
+
+    except Exception:
+        return {}
 
 
-@app.get("/health")
-def health():
+def get_market_day(date_string):
+    market = {}
 
-    return {
-        "status": "ok",
-        "service": "TW Breakout Radar"
-    }
+    market.update(get_twse(date_string))
+    market.update(get_tpex(date_string))
+
+    return market
 
 
-@app.get("/api/scan")
-def scan():
-
-    days = int(request.args.get("days", 20))
-    pct = float(request.args.get("pct", 10))
-
-    days = max(2, min(days, 120))
-    pct = max(0.1, min(pct, 100))
-
-    sessions = []
+def get_history(days):
+    history = []
 
     current = date.today()
 
-    while len(sessions) < days + 1:
+    max_days = days * 4 + 20
+    checked = 0
 
-        d = current.strftime("%Y%m%d")
+    while len(history) < days + 1 and checked < max_days:
+        date_string = current.strftime("%Y%m%d")
 
-        market = get_day(d)
+        market = get_market_day(date_string)
 
         if market:
-            sessions.append((d, market))
+            history.append(
+                (date_string, market)
+            )
 
         current -= timedelta(days=1)
+        checked += 1
 
-        if (date.today() - current).days > days * 4:
-            break
+    return history
 
-    if len(sessions) < days + 1:
 
-        return jsonify({
-            "error": "取得不到足夠的歷史交易資料"
-        }), 503
+def scan_market(days, pct):
+    history = get_history(days)
 
-    today_date, today_data = sessions[0]
+    if len(history) < days + 1:
+        return {
+            "error": "取得不到足夠的歷史交易資料",
+            "results": []
+        }
 
-    previous_sessions = sessions[1:days + 1]
+    today_string, today_market = history[0]
 
-    highs = {}
+    previous_days = history[1:days + 1]
 
-    for _, market in previous_sessions:
+    historical_highs = {}
 
-        for code, row in market.items():
+    for _, market in previous_days:
+        for code, stock in market.items():
 
-            if row["high"] is not None:
+            high = stock["high"]
 
-                highs.setdefault(code, []).append(
-                    row["high"]
-                )
+            if high is None:
+                continue
+
+            historical_highs.setdefault(
+                code,
+                []
+            ).append(high)
 
     results = []
 
-    for code, row in today_data.items():
+    for code, stock in today_market.items():
 
-        values = highs.get(code, [])
+        highs = historical_highs.get(code, [])
 
-        if len(values) < days:
+        if len(highs) < days:
             continue
 
-        previous_high = max(values)
+        previous_high = max(highs)
 
-        price = row["close"]
+        current_price = stock["close"]
 
-        if price <= 0:
+        if current_price <= 0:
             continue
 
         distance = (
-            (previous_high - price)
-            / price
+            (previous_high - current_price)
+            / current_price
             * 100
         )
 
-        # 排除已經突破前高的股票
+        # 已創新高或等於前高，排除
         if distance <= 0:
             continue
 
+        # 超過設定距離，排除
         if distance > pct:
             continue
 
+        # 越接近突破，分數越高
         score = round(
             100 - (distance / pct * 100)
         )
 
-        if score >= 65:
+        score = max(0, min(score, 100))
+
+        if score >= 70:
             grade = "a"
-        elif score >= 30:
+        elif score >= 40:
             grade = "b"
         else:
             grade = "c"
 
         results.append({
-
             "code": code,
-
-            "name": row["name"],
-
-            "price": price,
-
-            "high": previous_high,
-
+            "name": stock["name"],
+            "market": stock["market"],
+            "price": current_price,
+            "high": round(previous_high, 2),
             "dist": round(distance, 2),
-
             "score": score,
-
-            "grade": grade,
-
-            "market": row["market"],
-
-            "reason":
-                f"距離前 {days} 日高點 "
-                f"{distance:.2f}%"
-
+            "grade": grade
         })
 
     results.sort(
-        key=lambda x: x["dist"]
+        key=lambda item: (
+            -item["score"],
+            item["dist"]
+        )
     )
 
-    return jsonify({
-
-        "date": today_date,
-
+    return {
+        "date": today_string,
         "days": days,
-
         "pct": pct,
-
         "count": len(results),
-
         "results": results
+    }
 
-    })
 
 @app.route("/")
 def home():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>TW Breakout Radar</title>
-    </head>
-    <body>
-        <h1>🇹🇼 TW Breakout Radar</h1>
-        <p>台股突破雷達正在運作中 🚀</p>
-    </body>
-    </html>
-    """
-if __name__ == "__main__":
+    return send_file("index.html")
 
+
+@app.route("/api/scan")
+def api_scan():
+    try:
+        days = int(
+            request.args.get(
+                "days",
+                20
+            )
+        )
+
+        pct = float(
+            request.args.get(
+                "pct",
+                10
+            )
+        )
+
+        days = max(
+            2,
+            min(days, 120)
+        )
+
+        pct = max(
+            0.1,
+            min(pct, 100)
+        )
+
+        result = scan_market(
+            days,
+            pct
+        )
+
+        return jsonify(result)
+
+    except Exception as error:
+
+        return jsonify({
+            "error": str(error),
+            "results": []
+        }), 500
+
+
+@app.route("/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "service": "TW Breakout Radar"
+    })
+
+
+if __name__ == "__main__":
     port = int(
-        os.environ.get("PORT", 10000)
+        os.environ.get(
+            "PORT",
+            10000
+        )
     )
 
     app.run(
